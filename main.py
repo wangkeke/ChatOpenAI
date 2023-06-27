@@ -21,12 +21,13 @@ from fastapi.templating import Jinja2Templates
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
 
+DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localhost:8000")
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    DOMAIN_NAME
 ]
 
 app.add_middleware(
@@ -47,9 +48,10 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
         resp = ChatResponse(sender="bot", message=token, type="stream")
         await self.websocket.send_json(resp.dict())
 
+
 @app.get("/")
 async def get(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "domain": DOMAIN_NAME})
 
 @app.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
