@@ -1,0 +1,92 @@
+import os
+import logging
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.callbacks.base import AsyncCallbackHandler
+from schemas import ChatResponse
+from fastapi import (
+    FastAPI, 
+    WebSocket,
+    Cookie,
+    Depends,
+    Query,
+    WebSocketDisconnect,
+    status,
+    Request
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+class StreamingLLMCallbackHandler(AsyncCallbackHandler):
+    """Callback handler for streaming LLM responses."""
+    def __init__(self, websocket: WebSocket) -> None:
+        self.websocket = websocket
+    
+    async def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
+        resp = ChatResponse(sender="bot", message=token, type="stream")
+        await self.websocket.send_json(resp.dict())
+
+@app.get("/")
+async def get(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.websocket("/ws/chat")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    chat = ChatOpenAI(openai_api_key=OPENAI_API_KEY, 
+                  model_name="gpt-3.5-turbo-0613", 
+                  temperature=0.9, 
+                  streaming=True,
+                  callbacks=[StreamingLLMCallbackHandler(websocket=websocket)]
+                  )
+    chain = ConversationChain(llm=chat, verbose=True, memory=ConversationBufferWindowMemory(memory_key=websocket.session, k=2))
+    while True:
+        try:
+            # Receive and send back the client message
+            question = await websocket.receive_text()
+            resp = ChatResponse(sender="you", message=question, type="stream")
+            await websocket.send_json(resp.dict())
+
+            # Construct a response
+            start_resp = ChatResponse(sender="bot", message="", type="start")
+            await websocket.send_json(start_resp.dict())
+
+            result = chain.acall(input=question)
+            # 结束一轮对话
+            end_resp = ChatResponse(sender="bot", message="", type="end")
+            await websocket.send_json(end_resp.dict())
+            logging.info(result)
+        except WebSocketDisconnect: 
+            logging.info("websocket disconnect")
+            break
+        except Exception as e:
+            logging.error(e)
+            resp = ChatResponse(
+                sender="bot",
+                message="服务器内部错误，请刷新重试！",
+                type="error",
+            )
+            await websocket.send_json(resp.dict())
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
