@@ -75,12 +75,11 @@ async def websocket_endpoint(websocket: WebSocket):
             start_resp = ChatResponse(sender="bot", message="", type="start")
             await websocket.send_json(start_resp.dict())
 
-            result = chain.acall(inputs={"input": question})
+            result = await chain.acall(inputs={"input": question})
             logging.info(result)
             # 结束一轮对话
             end_resp = ChatResponse(sender="bot", message="", type="end")
             await websocket.send_json(end_resp.dict())
-            logging.info(result)
         except WebSocketDisconnect: 
             logging.info("websocket disconnect")
             break
