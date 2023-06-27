@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
 
-DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "localhost:8000")
+DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "127.0.0.1:8000")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
