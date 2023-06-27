@@ -62,7 +62,8 @@ async def websocket_endpoint(websocket: WebSocket):
                   streaming=True,
                   callbacks=[StreamingLLMCallbackHandler(websocket=websocket)]
                   )
-    chain = ConversationChain(llm=chat, verbose=True, memory=ConversationBufferWindowMemory(memory_key=websocket.session, k=2))
+    
+    chain = ConversationChain(llm=chat, verbose=True, memory=ConversationBufferWindowMemory(k=2))
     while True:
         try:
             # Receive and send back the client message
