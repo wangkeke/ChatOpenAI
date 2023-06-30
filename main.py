@@ -19,7 +19,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
 
 DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "127.0.0.1:8000")
 
@@ -57,7 +57,7 @@ async def get(request: Request):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     chat = ChatOpenAI(openai_api_key=OPENAI_API_KEY, 
-                  model_name="gpt-3.5-turbo-0613", 
+                  model_name="gpt-3.5-turbo", 
                   temperature=0.9, 
                   streaming=True,
                   callbacks=[StreamingLLMCallbackHandler(websocket=websocket)]
