@@ -7,7 +7,7 @@
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .chat-body {
-            width: 550px;
+            /* width: 550px; */
             margin: 50px 5%;
         }
         .card-body {
@@ -33,11 +33,9 @@
         }
         .form-control {
             width: 90%;
-            background-color: #555;
+            background-color: #333;
             color: #fff;
-            border-style: solid;
-            border-width: 1px;
-            border-color: #6b7280;
+            border:1px solid #444;
             border-radius: 5px;
             padding: 10px;
             margin-right: 10px;
@@ -136,7 +134,7 @@
             </div>
             <form action="" class="form-inline m-5" id="chat-form" onsubmit="sendMessage(event)">
                 <input type="text" class="form-control" placeholder="Write your question" id="messageText">
-                <button id="send" type="submit" class="btn btn-primary">发送</button>
+                <button id="send" type="submit" class="btn btn-primary">Send</button>
             </form>
         </div>
     </div>
