@@ -52,7 +52,7 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
 
 @app.get("/")
 async def get(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "domain": DOMAIN_NAME})
+    return templates.TemplateResponse("gpt4.0.html", {"request": request, "domain": DOMAIN_NAME})
 
 @app.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
@@ -77,7 +77,6 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json(start_resp.dict())
 
             result = await chain.acall(inputs={"input": question})
-            logging.info(result)
             # 结束一轮对话
             end_resp = ChatResponse(sender="bot", message="", type="end")
             await websocket.send_json(end_resp.dict())
