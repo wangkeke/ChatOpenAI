@@ -57,7 +57,7 @@
     </style>
         <script>
           var index = 0;
-          var endpoint = "wss://chatbot-mjub.onrender.com/ws/chat";
+          var endpoint = "wss://{{domain}}/ws/chat";
           var ws = new WebSocket(endpoint);
           var hiddenValue = '';
           // Receive message from server word by word. Display the words as they are received.
