@@ -76,7 +76,7 @@ async def websocket_endpoint(websocket: WebSocket):
             start_resp = ChatResponse(sender="bot", message="", type="start")
             await websocket.send_json(start_resp.dict())
 
-            result = await chain.acall(inputs={"input": question})
+            await chain.acall(inputs={"input": question})
             # 结束一轮对话
             end_resp = ChatResponse(sender="bot", message="", type="end")
             await websocket.send_json(end_resp.dict())
