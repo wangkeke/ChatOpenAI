@@ -1,6 +1,7 @@
 import os
 import logging
 import openai
+import json
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -62,7 +63,7 @@ async def get(request: Request):
 @app.post("/chat/{chatId}")
 async def chat(request: Request, chatId: str, messages: List[UserMessage]):
     response = openai.ChatCompletion.create(model = MODEL_NAME, 
-                                 messages = messages,
+                                 messages = json.dumps(messages),
                                  stream = True
                                  )
     return EventSourceResponse(response)
