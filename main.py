@@ -45,7 +45,7 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
         resp = ChatResponse(sender="bot", message=token, type="stream")
         await self.websocket.send_json(resp.dict())
 
-async def event_publisher(chunks, collected_messages: List):
+async def event_publisher(chunks, collected_messages: List[str]):
     # iterate through the stream of events
     try: 
         for chunk in chunks:
