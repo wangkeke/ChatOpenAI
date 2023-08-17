@@ -1,5 +1,6 @@
 import os
 import logging
+import openai
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -18,8 +19,11 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from sse_starlette.sse import EventSourceResponse
+from model import UserMessage
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "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")
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
 
 DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "127.0.0.1:8000")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
@@ -53,6 +57,16 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
 @app.get("/")
 async def get(request: Request):
     return templates.TemplateResponse("gpt4.0.html", {"request": request, "domain": DOMAIN_NAME})
+
+
+@app.post("/chat/{chatId}")
+async def chat(request: Request, chatId: str, messages: List[UserMessage]):
+    response = openai.ChatCompletion.create(model = MODEL_NAME, 
+                                 messages = messages,
+                                 stream = True
+                                 )
+    return EventSourceResponse(response)
+
 
 @app.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
