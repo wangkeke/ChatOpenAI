@@ -56,6 +56,7 @@
 
     </style>
         <script>
+          
           var index = 0;
           var endpoint = "wss://{{domain}}/ws/chat";
           var ws = new WebSocket(endpoint);
@@ -380,6 +381,27 @@
                 return
               }
               sendMessage(event)
+          }
+
+          function sse(){
+            var es = new EventSource('/chat/' + crypto.randomUUID());
+            es.onmessage = function (e) {
+              const data = JSON.parse(event.data)
+              if (data.error) {
+                  console.error("Error:", data.error)
+              } else {
+                  console.log("Received:", data)
+              }
+            };
+            es.addEventListener('startEvent', function (e) {
+              console.log(e.data);
+            });
+            es.addEventListener('streamEvent', function(e){
+              console.log(e.data)
+            })
+            es.addEventListener('endEvent', function(e){
+              console.log(e.data)
+            })
           }
 
       </script>

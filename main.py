@@ -1,6 +1,7 @@
 import os
 import logging
 import openai
+import json
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -65,10 +66,23 @@ async def get(request: Request):
 @app.post("/chat/{chatId}")
 async def chat(request: Request, chatId: str, messages: List[Message]):
     response = openai.ChatCompletion.create(model = MODEL_NAME, 
+                                 api_key = OPENAI_API_KEY,
                                  messages = jsonable_encoder(messages),
                                  stream = True
                                  )
-    return EventSourceResponse(response)
+    async def event_publisher():
+        # iterate through the stream of events
+        for chunk in response:
+            delta = chunk['choices'][0]['delta']
+            if delta.get('role'):
+                yield dict(event='start', data='')
+            elif delta.get('content'):
+                content = delta.get('content')
+                yield dict(event='stream', data=content)
+            else:
+                yield dict(event='end', data='')
+    
+    return EventSourceResponse(event_publisher())
 
 
 @app.websocket("/ws/chat")
@@ -80,7 +94,6 @@ async def websocket_endpoint(websocket: WebSocket):
                   streaming=True,
                   callbacks=[StreamingLLMCallbackHandler(websocket=websocket)]
                   )
-    
     chain = ConversationChain(llm=chat, verbose=True, memory=ConversationBufferWindowMemory(k=2))
     while True:
         try:
