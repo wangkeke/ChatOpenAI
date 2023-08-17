@@ -1,7 +1,6 @@
 import os
 import logging
 import openai
-import json
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -19,10 +18,10 @@ from fastapi import (
     Request,
 )
 from fastapi.encoders import jsonable_encoder
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 from model import Message
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
 DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "127.0.0.1:8000")
@@ -35,17 +34,6 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-origins = [
-    DOMAIN_NAME
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
 
 class StreamingLLMCallbackHandler(AsyncCallbackHandler):
     """Callback handler for streaming LLM responses."""
@@ -57,11 +45,30 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
         resp = ChatResponse(sender="bot", message=token, type="stream")
         await self.websocket.send_json(resp.dict())
 
+async def event_publisher(chunks, collected_messages: List):
+    # iterate through the stream of events
+    try: 
+        for chunk in chunks:
+            delta = chunk['choices'][0]['delta']
+            if delta.get('role'):
+                yield dict(event='start', data='')
+            elif delta.get('content'):
+                content = delta.get('content')
+                collected_messages.append(content)
+                yield dict(event='stream', data=content)
+            else:
+                yield dict(event='end', data=''.join(collected_messages))
+    except Exception as e:
+        logger.error(e)
+        yield dict(event='error', data=e)
 
 @app.get("/")
 async def get(request: Request):
     return templates.TemplateResponse("gpt4.0.html", {"request": request, "domain": DOMAIN_NAME})
 
+@app.get("/sse")
+async def sse(request: Request):
+    return templates.TemplateResponse('sse.html', {"request": request, "domain": DOMAIN_NAME})
 
 @app.post("/chat/{chatId}")
 async def chat(request: Request, chatId: str, messages: List[Message]):
@@ -70,19 +77,8 @@ async def chat(request: Request, chatId: str, messages: List[Message]):
                                  messages = jsonable_encoder(messages),
                                  stream = True
                                  )
-    async def event_publisher():
-        # iterate through the stream of events
-        for chunk in response:
-            delta = chunk['choices'][0]['delta']
-            if delta.get('role'):
-                yield dict(event='start', data='')
-            elif delta.get('content'):
-                content = delta.get('content')
-                yield dict(event='stream', data=content)
-            else:
-                yield dict(event='end', data='')
-    
-    return EventSourceResponse(event_publisher())
+    collected_messages = []
+    return EventSourceResponse(event_publisher(response, collected_messages=collected_messages))
 
 
 @app.websocket("/ws/chat")
