@@ -388,6 +388,9 @@
             
             let sse = new EventSource(fetch('/chat/' + crypto.randomUUID(), {
               method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
               body: JSON.stringify(payload)   
             }))
             sse.addEventListener('start', function (e) {
