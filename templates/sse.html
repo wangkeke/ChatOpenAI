@@ -73,7 +73,7 @@
             let p = document.createElement('p')
             div2.appendChild(p)
             p.className = 'whitespace-pre-wrap'
-            p.innerHTML = data.message
+            p.innerHTML = message
             messageContainer.appendChild(div);
 
             // 添加用户头像
@@ -123,12 +123,12 @@
             hiddenValue = '';
           }
 
-          function streamEventHandle(data){
+          function streamEventHandle(message){
             let messageContainer = document.getElementById('messageContainer')
             let contents = messageContainer.lastChild.getElementsByClassName('contents')[0]
             let element = contents.lastChild
-            for(let i = 0; i < data.length; i++){
-              let c = data[i]
+            for(let i = 0; i < message.length; i++){
+              let c = message[i]
               hiddenValue += c
               if(!element){
                 if(!hiddenValue.startsWith('`')){
@@ -253,7 +253,7 @@
             main.scrollTop = main.scrollHeight       
           }
 
-          function endEventHandle(data){
+          function endEventHandle(message){
             let messageContainer = document.getElementById('messageContainer')
             // 创建底部按钮组
             createBottomButtonGroup(messageContainer)
@@ -269,10 +269,10 @@
             button.classList.add("primary-bg:hover")
           }
 
-          function errorEventHandle(data){
+          function errorEventHandle(message){
             let messageContainer = document.getElementById('messageContainer')
             let contents = messageContainer.lastChild.lastChild;
-            contents.innerHTML += '<p class="whitespace-pre-wrap">' + data + '</p>';
+            contents.innerHTML += '<p class="whitespace-pre-wrap">' + message + '</p>';
             // 创建底部按钮组
             createBottomButtonGroup(messageContainer)
             // 页面滚动条自动滚动到内容最底部
