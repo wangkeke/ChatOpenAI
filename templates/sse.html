@@ -382,30 +382,30 @@
               sendMessage(event)
           }
 
-          function eventSourceRequest(message){
+          async function eventSourceRequest(message){
             messages.push(message)
             let payload = messages.slice(-9)
-            
-            let sse = new EventSource(fetch('/chat/' + crypto.randomUUID(), {
+            const response = await fetch('/chat/' + crypto.randomUUID(), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify(payload)   
-            }))
-            sse.addEventListener('start', function (e) {
+            })
+            let sse = new EventSource(response)
+            sse.addEventListener('start', (e) => {
               startEventHandle()
             });
-            sse.addEventListener('stream', function(e){
+            sse.addEventListener('stream', (e) => {
               streamEventHandle(e.data)
             })
-            sse.addEventListener('end', function(e){
+            sse.addEventListener('end', (e) => {
               console.log(e.data)
               endEventHandle(e.data)
               messages.push({'role': 'assistant', 'content': e.data})
               sse.close()
             })
-            sse.addEventListener('error', function(e){
+            sse.addEventListener('error', (e) => {
               console.error(e.data)
               errorEventHandle(e.data)
               sse.close()
