@@ -1,7 +1,6 @@
 import os
 import logging
 import openai
-import json
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -16,18 +15,21 @@ from fastapi import (
     Query,
     WebSocketDisconnect,
     status,
-    Request
+    Request,
 )
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
-from model import UserMessage
-
+from model import Message
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
-
 DOMAIN_NAME = os.environ.get("DOMAIN_NAME", "127.0.0.1:8000")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+
+# 配置日志
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -61,9 +63,9 @@ async def get(request: Request):
 
 
 @app.post("/chat/{chatId}")
-async def chat(request: Request, chatId: str, messages: List[UserMessage]):
+async def chat(request: Request, chatId: str, messages: List[Message]):
     response = openai.ChatCompletion.create(model = MODEL_NAME, 
-                                 messages = json.dumps(messages),
+                                 messages = jsonable_encoder(messages),
                                  stream = True
                                  )
     return EventSourceResponse(response)
