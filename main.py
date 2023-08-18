@@ -56,19 +56,20 @@ async def event_publisher(chunks, collected_messages: List[str]):
             delta = chunk['choices'][0]['delta']
             if delta.get('role'):
                 yield dict(event='start', data='')
-            elif delta.get('content'):
+            elif not bool(delta):
+                yield dict(event='end', data=''.join(collected_messages))
+            else:
                 content = delta.get('content')
                 collected_messages.append(content)
                 yield dict(event='stream', data=content)
-            else:
-                yield dict(event='end', data=''.join(collected_messages))
+
     except Exception as e:
         logger.error(e)
         yield dict(event='error', data=e)
 
 @app.get("/", response_class=HTMLResponse)
 async def get(request: Request):
-    return templates.TemplateResponse("gpt4.0.html", {"request": request, "domain": DOMAIN_NAME})
+    return templates.TemplateResponse("index.html", {"request": request, "domain": DOMAIN_NAME})
 
 @app.get("/sse", response_class=HTMLResponse)
 async def sse(request: Request):
