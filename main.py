@@ -61,6 +61,7 @@ async def event_publisher(chunks, collected_messages: List[str]):
             else:
                 content = delta.get('content')
                 collected_messages.append(content)
+                print(delta)
                 yield dict(event='stream', data=content)
 
     except Exception as e:
