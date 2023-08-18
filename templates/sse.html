@@ -4,7 +4,9 @@
   <title>智能助手</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="node_modules/fetch-event-source/dist/fes.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@microsoft/fetch-event-source@2.0.1/lib/cjs/index.js"></script>
   <style>
     .bg-gradient {
       background: linear-gradient(to bottom,rgba(239,237,230,1) 0%,rgba(239,237,230,0.65) 65%,rgba(239,237,230,0) 100%);
@@ -56,10 +58,10 @@
     }
 
     </style>
-        <script>
+        <script >
           var hiddenValue = ''
           var messages = []
-
+          console.log(fetchEventSource)
           function createUserMessage(message){
             let messageContainer = document.getElementById('messageContainer')
             // 添加用户消息
@@ -382,33 +384,35 @@
               sendMessage(event)
           }
 
-          async function eventSourceRequest(message){
+          function eventSourceRequest(message){
             messages.push(message)
             let payload = messages.slice(-9)
-            const response = await fetch('/chat/' + crypto.randomUUID(), {
+            let source = fetchEventSource('/chats/' + crypto.randomUUID(), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify(payload)   
             })
-            let sse = new EventSource(response)
-            sse.addEventListener('start', (e) => {
+            source.onmessage = (e) => {
+              console.log(e.data)
+            }
+            source.addEventListener('start', (e) => {
               startEventHandle()
             });
-            sse.addEventListener('stream', (e) => {
+            source.addEventListener('stream', (e) => {
               streamEventHandle(e.data)
             })
-            sse.addEventListener('end', (e) => {
+            source.addEventListener('end', (e) => {
               console.log(e.data)
               endEventHandle(e.data)
               messages.push({'role': 'assistant', 'content': e.data})
-              sse.close()
+              source.close()
             })
-            sse.addEventListener('error', (e) => {
+            source.addEventListener('error', (e) => {
               console.error(e.data)
               errorEventHandle(e.data)
-              sse.close()
+              source.close()
             })
           }
 

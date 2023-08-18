@@ -18,7 +18,9 @@ from fastapi import (
     Request,
 )
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 from model import Message
 
@@ -32,7 +34,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.mount(path='/assets', app=StaticFiles(directory='templates/assets'), name='static')
 templates = Jinja2Templates(directory="templates")
+
 
 
 class StreamingLLMCallbackHandler(AsyncCallbackHandler):
@@ -62,13 +66,17 @@ async def event_publisher(chunks, collected_messages: List[str]):
         logger.error(e)
         yield dict(event='error', data=e)
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def get(request: Request):
     return templates.TemplateResponse("gpt4.0.html", {"request": request, "domain": DOMAIN_NAME})
 
-@app.get("/sse")
+@app.get("/sse", response_class=HTMLResponse)
 async def sse(request: Request):
     return templates.TemplateResponse('sse.html', {"request": request, "domain": DOMAIN_NAME})
+
+@app.get("/index", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse('index.html', {"request": request})
 
 @app.post("/chat/{chatId}")
 async def chat(request: Request, chatId: str, messages: List[Message]):
@@ -79,6 +87,16 @@ async def chat(request: Request, chatId: str, messages: List[Message]):
                                  )
     collected_messages = []
     return EventSourceResponse(event_publisher(response, collected_messages=collected_messages))
+
+
+@app.post("/chats/{chatId}")
+async def chat(request: Request, chatId: str, messages: List[Message]):
+    async def gp():
+        yield dict(event='start', data="")
+        for i in range(len(messages[len(messages)-1].content)):
+            yield dict(event='stream', data=messages[len(messages)-1].content[i])
+        yield dict(event='end', data=messages[len(messages)-1].content)
+    return EventSourceResponse(gp())
 
 
 @app.websocket("/ws/chat")
