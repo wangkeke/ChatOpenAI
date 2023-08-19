@@ -1,6 +1,8 @@
 import os
 import logging
 import openai
+import asyncio
+import json
 from typing import Any, Dict, List
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
@@ -49,7 +51,7 @@ class StreamingLLMCallbackHandler(AsyncCallbackHandler):
         resp = ChatResponse(sender="bot", message=token, type="stream")
         await self.websocket.send_json(resp.dict())
 
-async def event_publisher(chunks, collected_messages: List[str]):
+def event_publisher(chunks, collected_messages: List[str]):
     # iterate through the stream of events
     try: 
         for chunk in chunks:
@@ -61,7 +63,6 @@ async def event_publisher(chunks, collected_messages: List[str]):
             else:
                 content = delta.get('content')
                 collected_messages.append(content)
-                print(delta)
                 yield dict(event='stream', data=content)
 
     except Exception as e:
@@ -76,9 +77,6 @@ async def get(request: Request):
 async def sse(request: Request):
     return templates.TemplateResponse('sse.html', {"request": request, "domain": DOMAIN_NAME})
 
-@app.get("/index", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse('index.html', {"request": request})
 
 @app.post("/chat/{chatId}")
 async def chat(request: Request, chatId: str, messages: List[Message]):
@@ -92,14 +90,17 @@ async def chat(request: Request, chatId: str, messages: List[Message]):
 
 
 @app.post("/chats/{chatId}")
-async def chat(request: Request, chatId: str, messages: List[Message]):
+async def chats(request: Request, chatId: str, messages: List[Message]):
     async def gp():
+        testValue = "下面是一个用Python写的斐波那契函数，其参数是n：\n\n```python\ndef fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    else:\n        sequence = [0, 1]\n        while len(sequence) < n:\n            next_number = sequence[-1] + sequence[-2]\n            sequence.append(next_number)\n        return sequence\n```\n\n这个函数将返回一个包含n个斐波那契数列的列表。如果n小于等于0，将返回一个空列表。如果n等于1，将返回一个只包含0的列表。否则，函数将使用循环构建斐波那契数列，直到列表达到n个元素。\n"
+        await asyncio.sleep(0.1)
         yield dict(event='start', data="")
-        for i in range(len(messages[len(messages)-1].content)):
-            yield dict(event='stream', data=messages[len(messages)-1].content[i])
-        yield dict(event='end', data=messages[len(messages)-1].content)
+        for i in range(len(testValue)):
+            await asyncio.sleep(0.1)
+            yield dict(event='stream', data=testValue[i].replace('\n', '\\n'))
+        await asyncio.sleep(0.1)
+        yield dict(event='end', data=testValue)
     return EventSourceResponse(gp())
-
 
 @app.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
