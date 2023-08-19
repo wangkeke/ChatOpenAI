@@ -60,10 +60,10 @@ def event_publisher(chunks, collected_messages: List[str]):
                 yield dict(event='start', data='')
             elif not bool(delta):
                 yield dict(event='end', data=''.join(collected_messages))
-            else:
+            elif delta.get('content'):
                 content = delta.get('content')
                 collected_messages.append(content)
-                yield dict(event='stream', data=content)
+                yield dict(event='stream', data=content.replace('\n', '\\n'))
 
     except Exception as e:
         logger.error(e)
