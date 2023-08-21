@@ -2,21 +2,12 @@ import os
 import logging
 import openai
 import asyncio
-import json
 from typing import Any, Dict, List
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.callbacks.base import AsyncCallbackHandler
-from schemas import ChatResponse
 from fastapi import (
     FastAPI, 
-    WebSocket,
     Cookie,
     Depends,
     Query,
-    WebSocketDisconnect,
-    status,
     Request,
 )
 from fastapi.encoders import jsonable_encoder
@@ -40,17 +31,6 @@ app.mount(path='/assets', app=StaticFiles(directory='templates/assets'), name='s
 templates = Jinja2Templates(directory="templates")
 
 
-
-class StreamingLLMCallbackHandler(AsyncCallbackHandler):
-    """Callback handler for streaming LLM responses."""
-    
-    def __init__(self, websocket: WebSocket) -> None:
-        self.websocket = websocket
-    
-    async def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        resp = ChatResponse(sender="bot", message=token, type="stream")
-        await self.websocket.send_json(resp.dict())
-
 def event_publisher(chunks, collected_messages: List[str]):
     # iterate through the stream of events
     try: 
@@ -72,10 +52,6 @@ def event_publisher(chunks, collected_messages: List[str]):
 @app.get("/", response_class=HTMLResponse)
 async def get(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "domain": DOMAIN_NAME})
-
-@app.get("/sse", response_class=HTMLResponse)
-async def sse(request: Request):
-    return templates.TemplateResponse('sse.html', {"request": request, "domain": DOMAIN_NAME})
 
 
 @app.post("/chat/{chatId}")
@@ -102,42 +78,6 @@ async def chats(request: Request, chatId: str, messages: List[Message]):
         yield dict(event='end', data=testValue)
     return EventSourceResponse(gp())
 
-@app.websocket("/ws/chat")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    chat = ChatOpenAI(openai_api_key=OPENAI_API_KEY, 
-                  model_name=MODEL_NAME, 
-                  temperature=0.9, 
-                  streaming=True,
-                  callbacks=[StreamingLLMCallbackHandler(websocket=websocket)]
-                  )
-    chain = ConversationChain(llm=chat, verbose=True, memory=ConversationBufferWindowMemory(k=2))
-    while True:
-        try:
-            # Receive and send back the client message
-            question = await websocket.receive_text()
-            resp = ChatResponse(sender="you", message=question, type="stream")
-            await websocket.send_json(resp.dict())
-
-            # Construct a response
-            start_resp = ChatResponse(sender="bot", message="", type="start")
-            await websocket.send_json(start_resp.dict())
-
-            await chain.acall(inputs={"input": question})
-            # 结束一轮对话
-            end_resp = ChatResponse(sender="bot", message="", type="end")
-            await websocket.send_json(end_resp.dict())
-        except WebSocketDisconnect: 
-            logging.info("websocket disconnect")
-            break
-        except Exception as e:
-            logging.error(e)
-            resp = ChatResponse(
-                sender="bot",
-                message="服务器内部错误，请刷新重试！",
-                type="error",
-            )
-            await websocket.send_json(resp.dict())
 
 if __name__ == "__main__":
     import uvicorn
